@@ -5,6 +5,15 @@ using UnityEngine.SceneManagement;
 
 public class BattleArea : MonoBehaviour
 {
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Application.Quit();
+        }
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         Debug.Log("aaaaa");
