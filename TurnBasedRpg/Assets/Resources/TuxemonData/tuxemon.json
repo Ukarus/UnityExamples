@@ -1,0 +1,24 @@
+{
+    "Items": [
+        {
+            "name": "Aardart",
+            "battleSpriteFront": "aardart-front",
+            "battleSpriteBack": "aardart-back",
+            "baseHP": 14,
+            "baseAttack": 9,
+            "baseDefense": 5,
+            "baseSpeed": 6
+        },
+        {
+            "name": "Agnite",
+            "battleSpriteFront": "agnite-front",
+            "battleSpriteBack": "agnite-back",
+            "baseHP": 12,
+            "baseAttack": 7,
+            "baseDefense": 3,
+            "baseSpeed": 7
+        }
+    ]
+    
+    
+}

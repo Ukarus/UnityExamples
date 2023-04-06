@@ -6,3 +6,4 @@ This folder implements a basic turn combat system like the ones seen in games li
 
 - Kenney (for UI and Player)
 - Tuxemon wiki
+- Battle Music https://freesound.org/people/Sirkoto51/sounds/414214/

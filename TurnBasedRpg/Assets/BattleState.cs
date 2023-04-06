@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -5,6 +6,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+
+[System.Serializable]
 public class Tuxemon
 {
     public string name;
@@ -13,17 +16,19 @@ public class Tuxemon
     public float attack;
     public float defense;
     public float speed;
-    public string spritePath;
+    public string spriteFrontPath;
+    public string spriteBackPath;
 
-    public Tuxemon(string name, float baseHP, float currentHP, float attack, float defense, float speed, string spritePath)
+    public Tuxemon(string name, float baseHP, float currentHP, float attack, float defense, float speed, string spriteFrontPath, string spriteBackPath)
     { 
         this.name = name;
         this.baseHP = baseHP;
-        this.currentHP = currentHP;
         this.attack = attack;
         this.defense = defense;
         this.speed = speed;
-        this.spritePath = spritePath;
+        this.spriteFrontPath = spriteFrontPath;
+        this.spriteBackPath = spriteBackPath;
+        this.currentHP = currentHP;
     }
 
     public void TakeDamage(float opponentAttack)
@@ -51,6 +56,13 @@ public class Turn
     }
 }
 
+[System.Serializable]
+public class Tuxemons
+{
+    //employees is case sensitive and must match the string "employees" in the JSON.
+    public Tuxemon[] tuxemons;
+}
+
 public class BattleState : MonoBehaviour
 {
     public Slider playerBar;
@@ -60,11 +72,18 @@ public class BattleState : MonoBehaviour
     public AudioClip hitSound;
     public Image playerImage;
     public Image opponentImage;
+    public Tuxemons tuxemons;
+    public GameObject playerPanel;
+    public GameObject opponentPanel;
+    public AudioSource victoryMusic;
+    public AudioSource battleMusic;
 
     private Tuxemon playerTuxemon;
     private Tuxemon opponentTuxemon;
     private AudioSource audioSource;
     private float gameDoneTimer = 0f;
+    private bool isWaitingForFainted = false;
+
 
     enum FightState
     {
@@ -75,41 +94,54 @@ public class BattleState : MonoBehaviour
     private FightState fState = FightState.Waiting;
     private Stack<Turn> turns;
 
+    public static class JsonHelper
+    {
+        public static T[] FromJson<T>(string json)
+        {
+            Wrapper<T> wrapper = JsonUtility.FromJson<Wrapper<T>>(json);
+            return wrapper.Items;
+        }
+
+        public static string ToJson<T>(T[] array)
+        {
+            Wrapper<T> wrapper = new Wrapper<T>();
+            wrapper.Items = array;
+            return JsonUtility.ToJson(wrapper);
+        }
+
+        public static string ToJson<T>(T[] array, bool prettyPrint)
+        {
+            Wrapper<T> wrapper = new Wrapper<T>();
+            wrapper.Items = array;
+            return JsonUtility.ToJson(wrapper, prettyPrint);
+        }
+
+        [Serializable]
+        private class Wrapper<T>
+        {
+            public T[] Items;
+        }
+    }
+
+    
+
+
     void Start()
     {
-        
-        playerTuxemon = new Tuxemon(
-                "Aardt",
-                50,
-                50,
-                9,
-                5,
-                4,
-                "Graphics/tuxemon/aardart-back"
-        );
-        opponentTuxemon = new Tuxemon(
-                "Agnite",
-                45,
-                45,
-                7,
-                6,
-                5,
-                "Graphics/tuxemon/agnite-front"
-       );
+        audioSource = GetComponent<AudioSource>();
+        playerTuxemon = tuxemons.tuxemons[0];
+        opponentTuxemon = tuxemons.tuxemons[1];
 
         turns = new Stack<Turn>();
 
-        // Set the initial values for the hp bars
-        playerBar.maxValue = playerTuxemon.baseHP;
-        opponentBar.maxValue = opponentTuxemon.baseHP;
-        playerBar.value = playerTuxemon.currentHP;
-        opponentBar.value = opponentTuxemon.currentHP;
 
-        audioSource = GetComponent<AudioSource>();
+        SetupTuxemonUI(playerPanel, playerTuxemon);
+        SetupTuxemonUI(opponentPanel, opponentTuxemon);
 
-        Debug.Log(Resources.Load(playerTuxemon.spritePath));
-        playerImage.sprite = Resources.Load<Sprite>(playerTuxemon.spritePath);
-        opponentImage.sprite = Resources.Load<Sprite>(opponentTuxemon.spritePath);
+
+        playerImage.sprite = Resources.Load<Sprite>(playerTuxemon.spriteBackPath);
+        opponentImage.sprite = Resources.Load<Sprite>(opponentTuxemon.spriteFrontPath);
+
     }
 
     // Update is called once per frame
@@ -146,17 +178,22 @@ public class BattleState : MonoBehaviour
             if (turn.isTurnFinished)
             {
                 turns.Pop();
+                IsGameDone();
             }
-            IsGameDone();
         } 
         else if (fState == FightState.Done)
         {
             gameDoneTimer += Time.deltaTime;
 
-            if (gameDoneTimer > 3f)
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetMouseButtonDown(0))
             {
                 OnRunAction();
             }
+
+            //if (gameDoneTimer > 3f && !isWaitingForFainted)
+            //{
+            //    OnRunAction();
+            //}
 
         }
 
@@ -169,11 +206,16 @@ public class BattleState : MonoBehaviour
         {
             battleText.text = "You fainted";
             fState = FightState.Done;
+            
         }
         else if (opponentTuxemon.currentHP <= 0)
         {
 
             battleText.text = "You win";
+            opponentPanel.GetComponent<Animator>().SetBool("IsOpponentFainted", true);
+            isWaitingForFainted = true;
+            victoryMusic.Play();
+            battleMusic.Stop();
             fState = FightState.Done;
         }
     }
@@ -194,13 +236,13 @@ public class BattleState : MonoBehaviour
         // set the final position to ensure accuracy
         turn.defenderBar.value = endValue;
         turn.isTurnFinished = true;
-    } 
+    }
    
 
     public void OnFightAction()
     {
 
-        if (fState != FightState.Fighting)
+        if (fState == FightState.Waiting)
         {
             fState = FightState.Fighting;
             Turn turn1;
@@ -226,5 +268,13 @@ public class BattleState : MonoBehaviour
     public void OnRunAction()
     {
         SceneManager.LoadScene("SampleScene");
+    }
+
+    private void SetupTuxemonUI(GameObject panel, Tuxemon tuxemon)
+    {
+        panel.transform.GetChild(0).GetComponent<TMPro.TextMeshProUGUI>().text = tuxemon.name;
+        Slider slider = panel.transform.GetChild(1).GetComponent<Slider>();
+        slider.maxValue = tuxemon.baseHP;
+        slider.value = tuxemon.currentHP;
     }
 }
