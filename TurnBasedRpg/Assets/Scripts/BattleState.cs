@@ -16,11 +16,12 @@ public class Tuxemon
     public float attack;
     public float defense;
     public float speed;
+    public float critHitChance = 0f;
     public string spriteFrontPath;
     public string spriteBackPath;
 
-    public Tuxemon(string name, float baseHP, float currentHP, float attack, float defense, float speed, string spriteFrontPath, string spriteBackPath)
-    { 
+    public Tuxemon(string name, float baseHP, float currentHP, float attack, float defense, float speed, string spriteFrontPath, string spriteBackPath, float critHitChance)
+    {
         this.name = name;
         this.baseHP = baseHP;
         this.attack = attack;
@@ -29,6 +30,7 @@ public class Tuxemon
         this.spriteFrontPath = spriteFrontPath;
         this.spriteBackPath = spriteBackPath;
         this.currentHP = currentHP;
+        this.critHitChance = critHitChance;
     }
 
     public void TakeDamage(float opponentAttack)
@@ -81,8 +83,7 @@ public class BattleState : MonoBehaviour
     private Tuxemon playerTuxemon;
     private Tuxemon opponentTuxemon;
     private AudioSource audioSource;
-    private float gameDoneTimer = 0f;
-    private bool isWaitingForFainted = false;
+
 
 
     enum FightState
@@ -132,7 +133,19 @@ public class BattleState : MonoBehaviour
             if (!turn.isAttackFinished)
             {
                 battleText.text = $"{turn.attacker.name} attacks {turn.defender.name}";
-                turn.defender.TakeDamage(turn.attacker.attack);
+                
+                var crit = UnityEngine.Random.value * 100 < turn.attacker.critHitChance;
+
+                if (crit)
+                {
+                    turn.defender.TakeDamage(turn.attacker.attack * 2);
+                    battleText.text = $"{turn.attacker.name} deals a critical hit!";
+                }
+                else
+                {
+                    turn.defender.TakeDamage(turn.attacker.attack * 2); 
+                }
+
 
                 turn.isAttackFinished = true;
                 if (!audioSource.isPlaying)
@@ -153,18 +166,11 @@ public class BattleState : MonoBehaviour
         } 
         else if (fState == FightState.Done)
         {
-            gameDoneTimer += Time.deltaTime;
 
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetMouseButtonDown(0))
             {
                 OnRunAction();
             }
-
-            //if (gameDoneTimer > 3f && !isWaitingForFainted)
-            //{
-            //    OnRunAction();
-            //}
-
         }
 
     }
@@ -183,7 +189,6 @@ public class BattleState : MonoBehaviour
 
             battleText.text = "You win";
             opponentPanel.GetComponent<Animator>().SetBool("IsOpponentFainted", true);
-            isWaitingForFainted = true;
             victoryMusic.Play();
             battleMusic.Stop();
             fState = FightState.Done;

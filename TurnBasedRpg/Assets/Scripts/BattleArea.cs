@@ -16,7 +16,7 @@ public class BattleArea : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        Debug.Log("aaaaa");
+        
         if (collision.CompareTag("Player"))
         {
             SceneManager.LoadScene("BattleScene");
@@ -25,7 +25,6 @@ public class BattleArea : MonoBehaviour
 
     private void OnTriggerStay2D(Collider2D collision)
     {
-        Debug.Log("aaaaa");
         if (collision.CompareTag("Player"))
         {
             Debug.Log("Entering Player");
